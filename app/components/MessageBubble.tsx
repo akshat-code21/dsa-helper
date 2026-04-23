@@ -3,17 +3,13 @@
 import { useState } from "react";
 import { ChevronDown, User, MessageSquare, Lightbulb, Cloud } from "lucide-react";
 import type { UIMessage } from "ai";
+import { MessageMarkdownContent } from "./MessageMarkdownContent";
 import { TypingIndicator } from "./TypingIndicator";
 
 interface MessageBubbleProps {
   message: UIMessage;
 }
 
-/**
- * Best-effort parse for the assistant's structured JSON response
- * ({ feedback, hint }). Handles partial/streaming payloads by
- * extracting string values even if the JSON isn't yet complete.
- */
 function parseFeedbackHint(text: string): { feedback?: string; hint?: string } | null {
   const trimmed = text.trim();
   if (!trimmed.startsWith("{")) return null;
@@ -59,7 +55,7 @@ function Avatar({ role }: { role: "user" | "assistant" }) {
   }
   return (
     <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border-default bg-surface-elevated font-mono text-[10px] font-semibold text-foreground">
-      ds
+      dsa
     </div>
   );
 }
@@ -193,9 +189,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 return (
                   <div
                     key={key}
-                    className="whitespace-pre-wrap wrap-break-word rounded-2xl rounded-br-md border border-border-default bg-surface-elevated px-3.5 py-2 text-sm leading-relaxed text-foreground"
+                    className="wrap-break-word rounded-2xl rounded-br-md border border-border-default bg-surface-elevated px-3.5 py-2 text-sm leading-relaxed text-foreground"
                   >
-                    {text}
+                    <MessageMarkdownContent text={text} />
                   </div>
                 );
               }
@@ -215,9 +211,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               return (
                 <div
                   key={key}
-                  className="whitespace-pre-wrap wrap-break-word rounded-2xl rounded-bl-md border border-border-default bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-foreground"
+                  className="wrap-break-word rounded-2xl rounded-bl-md border border-border-default bg-surface px-3.5 py-2.5 text-sm leading-relaxed text-foreground"
                 >
-                  {text}
+                  <MessageMarkdownContent text={text} />
                 </div>
               );
             }

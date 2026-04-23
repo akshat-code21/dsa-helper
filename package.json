@@ -11,12 +11,22 @@
   "dependencies": {
     "@ai-sdk/react": "^3.0.170",
     "@openrouter/ai-sdk-provider": "^2.8.0",
+    "@tiptap/extension-code-block-lowlight": "^3.22.4",
+    "@tiptap/extension-placeholder": "^3.22.4",
+    "@tiptap/markdown": "^3.22.4",
+    "@tiptap/react": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
     "ai": "^6.0.168",
     "axios": "^1.15.2",
+    "hast-util-to-html": "^9.0.5",
+    "lowlight": "^3.3.0",
     "lucide-react": "^1.9.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "saas": "^1.0.0",
+    "shiki": "^4.0.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {

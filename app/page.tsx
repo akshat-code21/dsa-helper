@@ -32,7 +32,8 @@ export default function Chat() {
   }, [messages, isStreaming]);
 
   const handleSubmit = useCallback(() => {
-    const trimmed = input.trim();
+    const md = (inputRef.current?.getMarkdown() ?? "").trim();
+    const trimmed = md || input.trim();
     if (!trimmed || isStreaming) return;
     sendMessage({ text: trimmed });
     setInput("");
@@ -81,7 +82,7 @@ export default function Chat() {
             {showPendingAssistant && (
               <div className="fade-in-up flex w-full gap-3">
                 <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border-default bg-surface-elevated font-mono text-[10px] font-semibold text-foreground">
-                  ds
+                  dsa
                 </div>
                 <div className="rounded-2xl rounded-bl-md border border-border-default bg-surface px-3.5 py-2.5">
                   <TypingIndicator />

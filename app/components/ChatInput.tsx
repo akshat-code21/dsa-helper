@@ -2,16 +2,17 @@
 
 import {
   forwardRef,
-  useEffect,
+  useCallback,
   useImperativeHandle,
   useRef,
   type FormEvent,
-  type KeyboardEvent,
 } from "react";
 import { ArrowUp, Square } from "lucide-react";
+import Tiptap, { type TiptapHandle } from "./Tiptap";
 
 export interface ChatInputHandle {
   focus: () => void;
+  getMarkdown: () => string;
 }
 
 interface ChatInputProps {
@@ -24,38 +25,35 @@ interface ChatInputProps {
 }
 
 const MAX_HEIGHT = 200;
+const PLACEHOLDER =
+  "Ask for a hint, share your approach, or paste a problem link…";
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   function ChatInput(
     { value, onChange, onSubmit, onStop, isStreaming, disabled },
     ref
   ) {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const tiptapRef = useRef<TiptapHandle>(null);
 
-    useImperativeHandle(ref, () => ({
-      focus: () => textareaRef.current?.focus(),
-    }));
-
-    useEffect(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
-    }, [value]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        focus: () => tiptapRef.current?.focus(),
+        getMarkdown: () => tiptapRef.current?.getMarkdown() ?? "",
+      }),
+      []
+    );
 
     const canSubmit = !disabled && !isStreaming && value.trim().length > 0;
+
+    const onEnterSubmit = useCallback(() => {
+      if (canSubmit) onSubmit();
+    }, [canSubmit, onSubmit]);
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (!canSubmit) return;
       onSubmit();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-        e.preventDefault();
-        if (canSubmit) onSubmit();
-      }
     };
 
     return (
@@ -68,16 +66,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             <label htmlFor="chat-input" className="sr-only">
               Message
             </label>
-            <textarea
+
+            <Tiptap
+              ref={tiptapRef}
               id="chat-input"
-              ref={textareaRef}
-              rows={1}
               value={value}
-              onChange={(e) => onChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask for a hint, share your approach, or paste a problem link…"
+              onChange={onChange}
+              onEnterSubmit={onEnterSubmit}
+              placeholder={PLACEHOLDER}
               disabled={disabled}
-              className="flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-relaxed text-foreground placeholder:text-foreground-subtle focus:outline-none disabled:opacity-60"
+              className="flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-relaxed text-foreground focus-within:outline-none"
               style={{ maxHeight: MAX_HEIGHT }}
             />
 
@@ -117,3 +115,5 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     );
   }
 );
+
+ChatInput.displayName = "ChatInput";
