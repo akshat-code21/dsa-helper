@@ -1,73 +1,122 @@
-'use client';
+"use client";
 
-import { useChat } from '@ai-sdk/react';
-import { LoaderCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useChat } from "@ai-sdk/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertCircle } from "lucide-react";
+
+import { ChatHeader } from "./components/ChatHeader";
+import { EmptyState } from "./components/EmptyState";
+import { MessageBubble } from "./components/MessageBubble";
+import { ChatInput, type ChatInputHandle } from "./components/ChatInput";
+import { TypingIndicator } from "./components/TypingIndicator";
 
 export default function Chat() {
-  const [input, setInput] = useState('');
-  const { messages, sendMessage } = useChat();
+  const [input, setInput] = useState("");
+  const { messages, sendMessage, setMessages, status, stop, error } = useChat();
 
-  console.log(messages)
+  const inputRef = useRef<ChatInputHandle>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const isStreaming = status === "submitted" || status === "streaming";
+  const hasMessages = messages.length > 0;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (nearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [messages, isStreaming]);
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = input.trim();
+    if (!trimmed || isStreaming) return;
+    sendMessage({ text: trimmed });
+    setInput("");
+  }, [input, isStreaming, sendMessage]);
+
+  const handlePickSuggestion = useCallback(
+    (prompt: string) => {
+      setInput(prompt);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    []
+  );
+
+  const handleReset = useCallback(() => {
+    if (isStreaming) stop();
+    setMessages([]);
+    setInput("");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [isStreaming, setMessages, stop]);
+
+  // The assistant is "thinking" when we've submitted but no parts have streamed yet.
+  const lastMessage = messages[messages.length - 1];
+  const showPendingAssistant =
+    status === "submitted" &&
+    (!lastMessage || lastMessage.role === "user");
+
   return (
-    <div className="flex flex-col w-full px-24 py-12">
-      <div>
-        {messages.map(message => (
-          <>
-            <div key={message.id} className="whitespace-pre-wrap">
-              {message.role === 'user' ? 'User: ' : 'AI: '}
-              {message.parts.map((part, i) => {
-                if (
-                  (part.type === 'text' || part.type === 'reasoning') &&
-                  part.state === 'streaming'
-                ) {
-                  return <div key={`${message.id}-${i}`}><LoaderCircle className='animate-spin' /></div>;
-                }
-                switch (part.type) {
-                  case 'text':
-                    return <div key={`${message.id}-${i}`}>
-                      <div className=''>{part.text}</div>
-                    </div>;
-                  case 'tool-weather':
-                    return (
-                      <pre key={`${message.id}-${i}`}>
-                        {JSON.stringify(part, null, 2)}
-                      </pre>
-                    );
-                  case 'reasoning':
-                    return (
-                      <div key={`${message.id}-${i}`} className="text-sm text-zinc-500 border-l-2 pl-2 my-1">
-                        {part.text}
-                      </div>
-                    );
+    <div className="flex h-dvh w-full flex-col bg-background">
+      <ChatHeader hasMessages={hasMessages} onReset={handleReset} />
 
-                }
-              })}
-            </div>
-          </>
-        ))}
+      <div
+        ref={scrollRef}
+        className="relative flex-1 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation"
+      >
+        {!hasMessages ? (
+          <EmptyState onPickSuggestion={handlePickSuggestion} />
+        ) : (
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+
+            {showPendingAssistant && (
+              <div className="fade-in-up flex w-full gap-3">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border-default bg-surface-elevated font-mono text-[10px] font-semibold text-foreground">
+                  ds
+                </div>
+                <div className="rounded-2xl rounded-bl-md border border-border-default bg-surface px-3.5 py-2.5">
+                  <TypingIndicator />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/6 px-3.5 py-3 text-sm text-red-300"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium">Something went wrong</span>
+                  <span className="text-xs text-red-300/80">
+                    {error.message || "Please try again."}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div ref={bottomRef} aria-hidden className="h-1" />
+          </div>
+        )}
       </div>
 
-      <div className='w-full'>
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            sendMessage({ text: input });
-            setInput('');
-          }}
-          className='flex flex-row items-center justify-center'
-        >
-          <input
-            className="fixed dark:bg-zinc-900 bottom-0 w-4/5 p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl"
-            value={input}
-            placeholder="Say something..."
-            onChange={e => setInput(e.currentTarget.value)}
-          />
-          <button type='submit' className='cursor-pointer fixed dark:bg-zinc-900 right-12 bottom-0 p-2 mb-8 border border-zinc-300 dark:border-zinc-800 rounded shadow-xl'>
-            Submit
-          </button>
-        </form>
-      </div>
+      <ChatInput
+        ref={inputRef}
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        onStop={stop}
+        isStreaming={isStreaming}
+      />
     </div>
   );
 }
