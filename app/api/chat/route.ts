@@ -2,16 +2,92 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { convertToModelMessages, streamText, UIMessage, tool } from "ai";
 import { z } from "zod";
 import { SYSTEM_PROMPT_V1 } from "@/prompts";
+import { auth, prisma } from "@/lib/auth";
+import { getLastUserMessage, getTextFromUIMessage } from "@/lib/ui-message-content";
+import { Role } from "@/app/generated/prisma/client";
+import { NextResponse } from "next/server";
 
 const openRouter = createOpenRouter({
   apiKey: process.env.NEXT_PUBLIC_GATEWAY_API_KEY,
 });
 
+type ChatRequestBody = {
+  messages?: UIMessage[];
+  conversationId?: string | null;
+  trigger?: "submit-message" | "regenerate-message";
+};
+
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const body = (await req.json()) as ChatRequestBody;
+  const { messages, conversationId: clientConversationId, trigger = "submit-message" } = body;
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return NextResponse.json(
+      { error: "Request body must include a non-empty messages array." },
+      { status: 400 }
+    );
+  }
+
+  const session = await auth.api.getSession({
+    headers: req.headers,
+  });
+
+  if (!session) {
+    return new NextResponse(null, { status: 403 });
+  }
+
+  const userId = session.user.id;
+
+  let activeConversationId: string;
+
+  if (clientConversationId) {
+    const existing = await prisma.conversation.findFirst({
+      where: { id: clientConversationId, userId },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Conversation not found or access denied." },
+        { status: 404 }
+      );
+    }
+    activeConversationId = existing.id;
+  } else {
+    const latest = await prisma.conversation.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (latest) {
+      activeConversationId = latest.id;
+    } else {
+      const created = await prisma.conversation.create({
+        data: { userId },
+      });
+      activeConversationId = created.id;
+    }
+  }
+
+  if (trigger === "submit-message") {
+    const lastUser = getLastUserMessage(messages);
+    if (lastUser) {
+      const content = getTextFromUIMessage(lastUser).trim();
+      if (content) {
+        await prisma.message.create({
+          data: {
+            conversationId: activeConversationId,
+            role: Role.USER,
+            content,
+          },
+        });
+        await prisma.conversation.update({
+          where: { id: activeConversationId },
+          data: { updatedAt: new Date() },
+        });
+      }
+    }
+  }
 
   const result = streamText({
-    model: openRouter("openai/gpt-oss-120b:free:online"),
+    model: openRouter("openai/gpt-oss-20b:free:online"),
     system: SYSTEM_PROMPT_V1,
     messages: await convertToModelMessages(messages),
     tools: {
@@ -71,7 +147,30 @@ export async function POST(req: Request) {
         ],
       },
     },
+    onFinish: async (event) => {
+      const text = event.text?.trim() ?? "";
+      if (!text) return;
+      try {
+        await prisma.message.create({
+          data: {
+            conversationId: activeConversationId,
+            role: Role.ASSISTANT,
+            content: text,
+          },
+        });
+        await prisma.conversation.update({
+          where: { id: activeConversationId },
+          data: { updatedAt: new Date() },
+        });
+      } catch (e) {
+        console.error("Failed to persist assistant message", e);
+      }
+    },
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    headers: {
+      "X-Conversation-Id": activeConversationId,
+    },
+  });
 }

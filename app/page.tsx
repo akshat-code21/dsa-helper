@@ -1,123 +1,15 @@
-"use client";
+import { auth } from "@/lib/auth"
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
+import Chat from "./pages/Chat"
 
-import { useChat } from "@ai-sdk/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle } from "lucide-react";
+export default async function Home() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+  if (!session) {
+    redirect("/auth/sign-in")
+  }
 
-import { ChatHeader } from "./components/ChatHeader";
-import { EmptyState } from "./components/EmptyState";
-import { MessageBubble } from "./components/MessageBubble";
-import { ChatInput, type ChatInputHandle } from "./components/ChatInput";
-import { TypingIndicator } from "./components/TypingIndicator";
-
-export default function Chat() {
-  const [input, setInput] = useState("");
-  const { messages, sendMessage, setMessages, status, stop, error } = useChat();
-
-  const inputRef = useRef<ChatInputHandle>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  const isStreaming = status === "submitted" || status === "streaming";
-  const hasMessages = messages.length > 0;
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const nearBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 160;
-    if (nearBottom) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [messages, isStreaming]);
-
-  const handleSubmit = useCallback(() => {
-    const md = (inputRef.current?.getMarkdown() ?? "").trim();
-    const trimmed = md || input.trim();
-    if (!trimmed || isStreaming) return;
-    sendMessage({ text: trimmed });
-    setInput("");
-  }, [input, isStreaming, sendMessage]);
-
-  const handlePickSuggestion = useCallback(
-    (prompt: string) => {
-      setInput(prompt);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    },
-    []
-  );
-
-  const handleReset = useCallback(() => {
-    if (isStreaming) stop();
-    setMessages([]);
-    setInput("");
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [isStreaming, setMessages, stop]);
-
-  // The assistant is "thinking" when we've submitted but no parts have streamed yet.
-  const lastMessage = messages[messages.length - 1];
-  const showPendingAssistant =
-    status === "submitted" &&
-    (!lastMessage || lastMessage.role === "user");
-
-  return (
-    <div className="flex h-dvh w-full flex-col bg-background">
-      <ChatHeader hasMessages={hasMessages} onReset={handleReset} />
-
-      <div
-        ref={scrollRef}
-        className="relative flex-1 overflow-y-auto"
-        role="log"
-        aria-live="polite"
-        aria-label="Conversation"
-      >
-        {!hasMessages ? (
-          <EmptyState onPickSuggestion={handlePickSuggestion} />
-        ) : (
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-
-            {showPendingAssistant && (
-              <div className="fade-in-up flex w-full gap-3">
-                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border-default bg-surface-elevated font-mono text-[10px] font-semibold text-foreground">
-                  dsa
-                </div>
-                <div className="rounded-2xl rounded-bl-md border border-border-default bg-surface px-3.5 py-2.5">
-                  <TypingIndicator />
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div
-                role="alert"
-                className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/6 px-3.5 py-3 text-sm text-red-300"
-              >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">Something went wrong</span>
-                  <span className="text-xs text-red-300/80">
-                    {error.message || "Please try again."}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div ref={bottomRef} aria-hidden className="h-1" />
-          </div>
-        )}
-      </div>
-
-      <ChatInput
-        ref={inputRef}
-        value={input}
-        onChange={setInput}
-        onSubmit={handleSubmit}
-        onStop={stop}
-        isStreaming={isStreaming}
-      />
-    </div>
-  );
+  return <Chat />
 }
