@@ -16,7 +16,9 @@ import {
 import { Role } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
 
-const openRouter = createOpenRouter();
+const openRouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 type ChatRequestBody = {
   messages?: UIMessage[];
