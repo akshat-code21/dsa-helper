@@ -155,9 +155,7 @@ Before responding:
 6. Run <verification_loop>
 </execution_order>`
 
-export const TITLE_GENERATION_PROMPT = `
-
-<task>
+export const TITLE_GENERATION_PROMPT = `<task>
 You are given a LeetCode problem link and the conversation history. Your job is to generate a title for the conversation based on the problem link and the conversation history.
 </task>
 
@@ -165,5 +163,9 @@ You are given a LeetCode problem link and the conversation history. Your job is 
 - Return exactly ONE response per turn.
 - Response must include:
   - A title for the conversation
+- Response should be in pure text, no markdown or other formatting.
+- Response should be no more than 10 words.
+- Response should be in the same language as the conversation history.
+- Response should be concise and to the point.
 </output_contract>
 `
