@@ -11,13 +11,22 @@ export async function GET(req: Request) {
     return new NextResponse(null, { status: 403 });
   }
 
-  const conv = await prisma.conversation.findFirst({
-    where: { userId: session.user.id },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-  });
+  const conversationIdParam = new URL(req.url).searchParams.get("id");
+
+  const conv = conversationIdParam
+    ? await prisma.conversation.findFirst({
+        where: { id: conversationIdParam, userId: session.user.id },
+        include: {
+          messages: { orderBy: { createdAt: "asc" } },
+        },
+      })
+    : await prisma.conversation.findFirst({
+        where: { userId: session.user.id },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          messages: { orderBy: { createdAt: "asc" } },
+        },
+      });
 
   if (!conv) {
     return NextResponse.json({

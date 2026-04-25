@@ -10,11 +10,19 @@ import { EmptyState } from "@/app//components/EmptyState";
 import { MessageBubble } from "@/app/components/MessageBubble";
 import { ChatInput, type ChatInputHandle } from "@/app/components/ChatInput";
 import { TypingIndicator } from "@/app/components/TypingIndicator";
+import { useRouter } from "next/navigation";
 
-export default function Chat() {
+type ChatProps = {
+  initialConversationId?: string;
+};
+
+export default function Chat({ initialConversationId }: ChatProps = {}) {
   const [input, setInput] = useState("");
   const [hydration, setHydration] = useState<"loading" | "ready">("loading");
-  const serverConversationIdRef = useRef<string | null>(null);
+  const serverConversationIdRef = useRef<string | null>(
+    initialConversationId ?? null
+  );
+  const router = useRouter();
   const [transport] = useState(
     () =>
       new DefaultChatTransport({
@@ -24,7 +32,12 @@ export default function Chat() {
         fetch: async (url, init) => {
           const res = await fetch(url, init);
           const id = res.headers.get("X-Conversation-Id");
-          if (id) serverConversationIdRef.current = id;
+          if (id) {
+            serverConversationIdRef.current = id;
+            if (window.location.pathname === "/") {
+              window.history.replaceState(null, "", `/chat/${id}`);
+            }
+          }
           return res;
         },
       })
@@ -35,10 +48,20 @@ export default function Chat() {
   });
 
   useEffect(() => {
+    if (initialConversationId) {
+      serverConversationIdRef.current = initialConversationId;
+    }
+  }, [initialConversationId]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/chat/conversation", { credentials: "include" });
+        const url =
+          initialConversationId != null
+            ? `/api/chat/conversation?id=${encodeURIComponent(initialConversationId)}`
+            : "/api/chat/conversation";
+        const res = await fetch(url, { credentials: "include" });
         if (!res.ok || cancelled) return;
         const data = (await res.json()) as {
           conversationId: string | null;
@@ -58,7 +81,7 @@ export default function Chat() {
     return () => {
       cancelled = true;
     };
-  }, [setMessages]);
+  }, [setMessages, initialConversationId]);
 
   const inputRef = useRef<ChatInputHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -103,8 +126,9 @@ export default function Chat() {
     setMessages([]);
     setInput("");
     requestAnimationFrame(() => inputRef.current?.focus());
+    router.replace("/")
   }, [isStreaming, setMessages, stop]);
-  
+
   const lastMessage = messages[messages.length - 1];
   const showPendingAssistant =
     status === "submitted" &&

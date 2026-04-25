@@ -7,9 +7,7 @@ import { getLastUserMessage, getTextFromUIMessage } from "@/lib/ui-message-conte
 import { Role } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
 
-const openRouter = createOpenRouter({
-  apiKey: process.env.NEXT_PUBLIC_GATEWAY_API_KEY,
-});
+const openRouter = createOpenRouter();
 
 type ChatRequestBody = {
   messages?: UIMessage[];
@@ -87,7 +85,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openRouter("openai/gpt-oss-20b:free:online"),
+    model: openRouter("openai/gpt-oss-120b:free:online"),
     system: SYSTEM_PROMPT_V1,
     messages: await convertToModelMessages(messages),
     tools: {
