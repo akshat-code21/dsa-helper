@@ -18,10 +18,8 @@ export function Providers({ children }: { children: ReactNode }) {
       authClient={authClient}
       appearance={{ theme, setTheme }}
       deleteUser={{ enabled: true }}
-      magicLink
       multiSession
       redirectTo="/"
-      socialProviders={["google", "github"]}
       navigate={({ to, replace }) =>
         replace ? router.replace(to) : router.push(to)
       }

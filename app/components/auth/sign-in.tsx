@@ -298,14 +298,14 @@ export function SignIn({
         </div>
 
         <div className="flex flex-col gap-3 items-center w-full mt-4">
-          {emailAndPassword?.forgotPassword && (
+          {/* {emailAndPassword?.forgotPassword && (
             <Link
               href={`${basePaths.auth}/${viewPaths.auth.forgotPassword}`}
               className="self-center text-sm underline-offset-4 hover:underline"
             >
               {localization.auth.forgotPasswordLink}
             </Link>
-          )}
+          )} */}
 
           {emailAndPassword?.enabled && (
             <FieldDescription className="text-center">
