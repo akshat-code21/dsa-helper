@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chatbot
 
-## Getting Started
+A full-stack chat application built with [Next.js](https://nextjs.org) (App Router), streaming AI responses through [OpenRouter](https://openrouter.ai) and the [Vercel AI SDK](https://ai-sdk.dev), with authentication via [Better Auth](https://www.better-auth.com) and persistence in PostgreSQL using [Prisma](https://www.prisma.io).
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Chat UI** with conversation history, titles, and server-side message storage
+- **Auth** — email/password and optional GitHub OAuth
+- **Models** — configured via OpenRouter (see `app/api/chat/route.ts` for the active model)
+- **Database** — users, sessions, and per-user conversations/messages
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requirements
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 20+
+- PostgreSQL database
+- An [OpenRouter](https://openrouter.ai) API key
+- (Optional) GitHub OAuth app credentials if you use GitHub sign-in
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment variables
 
-## Learn More
+Create a `.env` file in the project root. Typical variables:
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable               | Purpose                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string (used by Prisma and the auth layer)                                           |
+| `OPENROUTER_API_KEY`   | API key for OpenRouter (server-side)                                                                       |
+| `NEXT_PUBLIC_API_URL`  | Public base URL of the app, used for client/server API calls (e.g. `http://localhost:3000` in development) |
+| `BETTER_AUTH_URL`      | Base URL passed to the Better Auth client (usually matches your app URL)                                   |
+| `GITHUB_CLIENT_ID`     | GitHub OAuth client ID (if using GitHub login)                                                             |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (if using GitHub login)                                                         |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+If Better Auth or your deployment needs additional secrets (for example a signing secret), add them as required by your [Better Auth](https://www.better-auth.com/docs) setup.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Install dependencies**
+  ```bash
+   npm install
+  ```
+   `postinstall` runs `prisma generate` so the Prisma client is created automatically.
+2. **Configure the database**
+  Set `DATABASE_URL`, then create and apply migrations:
+3. **Run the development server**
+  ```bash
+   npm run dev
+  ```
+4. Open [http://localhost:3000](http://localhost:3000). Unauthenticated users are sent to the sign-in flow.
+
+## Scripts
+
+
+| Command         | Description                             |
+| --------------- | --------------------------------------- |
+| `npm run dev`   | Start Next.js in development            |
+| `npm run build` | Production build                        |
+| `npm start`     | Start production server (after `build`) |
+| `npm run lint`  | Run ESLint                              |
+
+
+## Project structure (high level)
+
+- `app/` — App Router pages, API routes (e.g. `app/api/chat`), and UI
+- `lib/` — Auth server/client setup and shared utilities
+- `prisma/` — Schema and migrations
+- `prompts/` — System and helper prompts for the model
+
