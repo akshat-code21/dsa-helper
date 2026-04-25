@@ -13,20 +13,19 @@ export async function GET(req: Request) {
 
   const conversationIdParam = new URL(req.url).searchParams.get("id");
 
-  const conv = conversationIdParam
-    ? await prisma.conversation.findFirst({
-        where: { id: conversationIdParam, userId: session.user.id },
-        include: {
-          messages: { orderBy: { createdAt: "asc" } },
-        },
-      })
-    : await prisma.conversation.findFirst({
-        where: { userId: session.user.id },
-        orderBy: { updatedAt: "desc" },
-        include: {
-          messages: { orderBy: { createdAt: "asc" } },
-        },
-      });
+  if (!conversationIdParam) {
+    return NextResponse.json({
+      conversationId: null,
+      messages: [],
+    });
+  }
+
+  const conv = await prisma.conversation.findFirst({
+    where: { id: conversationIdParam, userId: session.user.id },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+  });
 
   if (!conv) {
     return NextResponse.json({

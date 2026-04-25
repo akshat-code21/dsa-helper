@@ -18,7 +18,7 @@ export function ChatHeader({ hasMessages, onReset }: ChatHeaderProps) {
     )
   }
   return (
-    <header className="sticky top-0 z-20 border-b border-border-subtle bg-(--background)/85 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-border-subtle bg-(--background)/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
           <div className="grid h-7 w-7 place-items-center rounded-md border border-border-default bg-surface font-mono text-[11px] font-semibold tracking-tight text-foreground">

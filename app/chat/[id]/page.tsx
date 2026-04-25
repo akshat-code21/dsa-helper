@@ -1,5 +1,6 @@
 import Chat from "@/app/pages/Chat";
-import { auth } from "@/lib/auth";
+import { auth, prisma } from "@/lib/auth";
+import axios from "axios";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -16,5 +17,13 @@ export default async function ChatPage({
   }
 
   const { id } = await params;
-  return <Chat initialConversationId={id} />;
+  const { data } = await axios.get(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/chat`,
+    {
+      headers: Object.fromEntries(await headers()),
+      withCredentials: true,
+    }
+  );
+  const conversations = data.conversations;
+  return <Chat initialConversationId={id} conversations={conversations} />;
 }

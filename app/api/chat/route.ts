@@ -1,9 +1,18 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { convertToModelMessages, streamText, UIMessage, tool } from "ai";
-import { z } from "zod";
-import { SYSTEM_PROMPT_V1 } from "@/prompts";
+import {
+  convertToModelMessages,
+  streamText,
+  UIMessage,
+  tool,
+  generateText,
+  ModelMessage,
+} from "ai";
+import { SYSTEM_PROMPT_V1, TITLE_GENERATION_PROMPT } from "@/prompts";
 import { auth, prisma } from "@/lib/auth";
-import { getLastUserMessage, getTextFromUIMessage } from "@/lib/ui-message-content";
+import {
+  getLastUserMessage,
+  getTextFromUIMessage,
+} from "@/lib/ui-message-content";
 import { Role } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
 
@@ -15,14 +24,49 @@ type ChatRequestBody = {
   trigger?: "submit-message" | "regenerate-message";
 };
 
+const generateTitle = async (conversationId: string) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: {
+      id: conversationId,
+    },
+    include: {
+      messages: true,
+    },
+  });
+
+  if (!conversation) {
+    return;
+  }
+
+  const modelMessages: ModelMessage[] = conversation.messages.map((m) => ({
+    role: m.role === "USER" ? "user" : "assistant",
+    content: m.content,
+  }));
+
+  const { text } = await generateText({
+    model: openRouter("openai/gpt-oss-120b:free:online"),
+    system: TITLE_GENERATION_PROMPT,
+    messages: modelMessages,
+  });
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { title: text },
+  });
+};
+
 export async function POST(req: Request) {
   const body = (await req.json()) as ChatRequestBody;
-  const { messages, conversationId: clientConversationId, trigger = "submit-message" } = body;
+  const {
+    messages,
+    conversationId: clientConversationId,
+    trigger = "submit-message",
+  } = body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json(
       { error: "Request body must include a non-empty messages array." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -45,23 +89,15 @@ export async function POST(req: Request) {
     if (!existing) {
       return NextResponse.json(
         { error: "Conversation not found or access denied." },
-        { status: 404 }
+        { status: 404 },
       );
     }
     activeConversationId = existing.id;
   } else {
-    const latest = await prisma.conversation.findFirst({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
+    const created = await prisma.conversation.create({
+      data: { userId, title: "New Conversation" },
     });
-    if (latest) {
-      activeConversationId = latest.id;
-    } else {
-      const created = await prisma.conversation.create({
-        data: { userId },
-      });
-      activeConversationId = created.id;
-    }
+    activeConversationId = created.id;
   }
 
   if (trigger === "submit-message") {
@@ -88,21 +124,6 @@ export async function POST(req: Request) {
     model: openRouter("openai/gpt-oss-120b:free:online"),
     system: SYSTEM_PROMPT_V1,
     messages: await convertToModelMessages(messages),
-    tools: {
-      weather: tool({
-        description: "Get the weather in a location (fahrenheit)",
-        inputSchema: z.object({
-          location: z.string().describe("The location to get the weather for"),
-        }),
-        execute: async ({ location }) => {
-          const temperature = Math.round(Math.random() * (90 - 32) + 32);
-          return {
-            location,
-            temperature,
-          };
-        },
-      }),
-    },
     providerOptions: {
       openrouter: {
         reasoning_effort: "medium",
@@ -160,6 +181,8 @@ export async function POST(req: Request) {
           where: { id: activeConversationId },
           data: { updatedAt: new Date() },
         });
+
+        await generateTitle(activeConversationId);
       } catch (e) {
         console.error("Failed to persist assistant message", e);
       }
@@ -170,5 +193,22 @@ export async function POST(req: Request) {
     headers: {
       "X-Conversation-Id": activeConversationId,
     },
+  });
+}
+
+export async function GET(req: Request) {
+  const session = await auth.api.getSession({
+    headers: req.headers,
+  });
+
+  if (!session) {
+    return new NextResponse(null, { status: 403 });
+  }
+  const conversations = await prisma.conversation.findMany({
+    where: { userId: session.user.id },
+    orderBy: { updatedAt: "desc" },
+  });
+  return NextResponse.json({
+    conversations,
   });
 }
