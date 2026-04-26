@@ -1,11 +1,12 @@
 import * as z from "zod";
 import { tool } from "@langchain/core/tools";
-import { vectorStore } from "./vectorStore";
+import { getVectorStore } from "./vectorStore";
 
 const retrieveSchema = z.object({ query: z.string() });
 
 export const retrieve = tool(
 	async ({ query }) => {
+		const vectorStore = await getVectorStore();
 		const retrievedDocs = await vectorStore.similaritySearch(query, 2);
 		const serialized = retrievedDocs
 			.map(

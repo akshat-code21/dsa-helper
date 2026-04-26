@@ -7,7 +7,7 @@ import {
   generateText,
   ModelMessage,
 } from "ai";
-import { SYSTEM_PROMPT_V1, TITLE_GENERATION_PROMPT } from "@/prompts";
+import { SYSTEM_PROMPT_V1, SYSTEM_PROMPT_V2, TITLE_GENERATION_PROMPT } from "@/prompts";
 import { auth, prisma } from "@/lib/auth";
 import {
   getLastUserMessage,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/ui-message-content";
 import { Role } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
+import { getContextUsingRag } from "@/rag";
 
 const openRouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -122,9 +123,17 @@ export async function POST(req: Request) {
     }
   }
 
+  const lastUser = getLastUserMessage(messages);
+  const userText = lastUser ? getTextFromUIMessage(lastUser).trim() : "";
+
+  const ragContext = userText ? await getContextUsingRag(userText) : "";
+
+  const system = SYSTEM_PROMPT_V2.replace("{context}", ragContext);
+
   const result = streamText({
     model: openRouter("openai/gpt-oss-120b:free:online"),
-    system: SYSTEM_PROMPT_V1,
+    // system: `${SYSTEM_PROMPT_V1}\n\n<retrieved_context>${ragContext}</retrieved_context>`,
+    system,
     messages: await convertToModelMessages(messages),
     providerOptions: {
       openrouter: {
