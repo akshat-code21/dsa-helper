@@ -12,6 +12,15 @@ datasource db {
   provider = "postgresql"
 }
 
+model DsaPattern {
+  id        String                       @id @default(uuid())
+  content   String
+  source    String
+  embedding Unsupported("vector(1536)")?
+
+  @@map("dsa_pattern")
+}
+
 model Conversation {
   id        String    @id @default(uuid())
   title     String    @default("New Conversation")
