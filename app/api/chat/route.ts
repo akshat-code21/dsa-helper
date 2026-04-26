@@ -131,7 +131,7 @@ export async function POST(req: Request) {
   const system = SYSTEM_PROMPT_V2.replace("{context}", ragContext);
 
   const result = streamText({
-    model: openRouter("openai/gpt-oss-120b:free:online"),
+    model: openRouter("openai/gpt-oss-120b:free"),
     // system: `${SYSTEM_PROMPT_V1}\n\n<retrieved_context>${ragContext}</retrieved_context>`,
     system,
     messages: await convertToModelMessages(messages),
