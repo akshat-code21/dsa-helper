@@ -3,7 +3,6 @@ import {
   convertToModelMessages,
   streamText,
   UIMessage,
-  tool,
   generateText,
   ModelMessage,
 } from "ai";
@@ -16,6 +15,7 @@ import {
 import { Role } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
 import { getContextUsingRag } from "@/rag";
+import { leetcodeProblemTool } from "@/lib/leetcode-tool";
 
 const openRouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -47,7 +47,7 @@ const generateTitle = async (conversationId: string) => {
   }));
 
   const { text } = await generateText({
-    model: openRouter("openai/gpt-oss-120b:free:online"),
+    model: openRouter("openai/gpt-oss-120b:free"),
     system: TITLE_GENERATION_PROMPT,
     messages: modelMessages,
   });
@@ -135,6 +135,9 @@ export async function POST(req: Request) {
     // system: `${SYSTEM_PROMPT_V1}\n\n<retrieved_context>${ragContext}</retrieved_context>`,
     system,
     messages: await convertToModelMessages(messages),
+    tools: {
+      leetcodeProblem: leetcodeProblemTool,
+    },
     providerOptions: {
       openrouter: {
         reasoning_effort: "medium",
@@ -165,16 +168,6 @@ export async function POST(req: Request) {
             },
           },
         },
-        plugins: [
-          {
-            id: "web",
-            max_results: 1,
-            search_prompt:
-              "You need to get the problem details from the specific leetcode problem.",
-            include_domains: ["leetcode.com"],
-            exclude_domains: ["reddit.com"],
-          },
-        ],
       },
     },
     onFinish: async (event) => {
